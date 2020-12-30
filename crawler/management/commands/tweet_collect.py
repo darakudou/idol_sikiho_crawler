@@ -13,9 +13,8 @@ class Command(BaseCommand):
         どんどん古い方に向かって取得していく
         """
         tweepy_util = TweepyUtils()
-        if tweepy_util.status != 200:
-            return None
         for acount in TwitterAcount.objects.all().order_by("twitter_id"):
-            tweets = tweepy_util.get_old_tweet_from_max_id(acount)
-            for tweet in tweets:
-                Tweet.create(acount, tweet)
+            for i in range(100):
+                tweets = tweepy_util.get_old_tweet_from_max_id(acount)
+                for tweet in tweets:
+                    Tweet.create(acount, tweet)
