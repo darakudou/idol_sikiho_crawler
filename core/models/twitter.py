@@ -30,10 +30,13 @@ class Tweet(models.Model):
     created_at = models.DateTimeField()
     favorite_count = models.IntegerField()
     retweet_count = models.IntegerField()
-    retweeted = models.BooleanField(default=False)
+    is_retweeted = models.BooleanField(default=False)
+    is_quote_tweet = models.BooleanField(default=False)
+    is_mention = models.BooleanField(default=False)
 
     pictures = models.ManyToManyField("Picture", related_name="tweets")
     hashtags = models.ManyToManyField("HashTag", related_name="tweets")
+    mentisons = models.ManyToManyField("Mention", related_name="mentions")
 
     def __str__(self):
         return f"{self.acount.idol.name}-{self.text[0: 25]}"
@@ -41,13 +44,17 @@ class Tweet(models.Model):
     @classmethod
     def create(cls, acount, tweet_info):
         defaults = dict()
+        defaults["acount"] = acount
         defaults["id"] = tweet_info.id
         defaults["created_at"] = tweet_info.created_at
         defaults["text"] = tweet_info.full_text
-        defaults["retweeted"] = tweet_info.retweeted
         defaults["favorite_count"] = tweet_info.favorite_count
         defaults["retweet_count"] = tweet_info.retweet_count
-        defaults["acount"] = acount
+        defaults["is_retweeted"] = hasattr(tweet_info, "retweeted_status")
+        defaults["is_quote_tweet"] = tweet_info.is_quote_status
+        if hasattr(tweet_info, "entities"):
+            is_mention = True if tweet_info.entities.get("user_mentions") else False
+            defaults["is_mention"] = is_mention
 
         tweet, _ = cls.objects.get_or_create(tweet_id=tweet_info.id, defaults=defaults)
 
@@ -60,12 +67,26 @@ class Tweet(models.Model):
             tweet.pictures.set(pics)
 
         # hashtagの作成
-        if hasattr(tweet, "entities"):
+        if hasattr(tweet_info, "entities"):
             hashtags = []
-            for hashtag in tweet["entities"]["hashtags"]:
-                ht = HashTag.objects.get_or_create(name=hashtag)
+            for hashtag in tweet_info.entities["hashtags"]:
+                ht, _ = HashTag.objects.get_or_create(name=hashtag)
                 hashtags.append(ht)
             tweet.hashtags.set(hashtags)
+
+        # mentionsの作成
+        if tweet.is_mention:
+            mentions = []
+            for user_mention in tweet_info.entities.get("user_mentions", []):
+                mention, _ = Mention.objects.get_or_create(
+                    twitter_id=user_mention["id"],
+                    defaults={"twitter_id": user_mention["id"],
+                              "screen_name": user_mention["screen_name"]
+                              }
+                )
+
+                mentions.append(mention)
+            tweet.mentisons.set(mentions)
 
 
 class Picture(models.Model):
@@ -74,3 +95,8 @@ class Picture(models.Model):
 
 class HashTag(models.Model):
     name = models.CharField(max_length=255, unique=True)
+
+
+class Mention(models.Model):
+    twitter_id = models.BigIntegerField(unique=True)
+    screen_name = models.CharField(max_length=255)

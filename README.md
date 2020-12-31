@@ -9,4 +9,8 @@
 
 ## database 
 - sqlite3(local)
-- Postgres(prod)
+
+## 使い方
+
+- .env_templateを素に.envを作成する
+- 別途取得したtwitterのtokenとかkeyをセットする

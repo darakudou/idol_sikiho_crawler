@@ -14,7 +14,7 @@ class Command(BaseCommand):
         """
         tweepy_util = TweepyUtils()
         for acount in TwitterAcount.objects.all().order_by("twitter_id"):
-            for i in range(100):
+            for i in range(40):
                 tweets = tweepy_util.get_old_tweet_from_max_id(acount)
                 for tweet in tweets:
                     Tweet.create(acount, tweet)
